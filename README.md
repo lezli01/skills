@@ -25,6 +25,22 @@ npx skills add lezli01/skills --skill <skill-name> -g -a claude-code -y
 
 Keep installed skills current with `npx skills update`.
 
+### As a Claude Code plugin
+
+```
+/plugin install lezli01 --marketplace lezli01/skills
+```
+
+On Claude Code older than 2.1.275, add the marketplace first:
+
+```
+/plugin marketplace add lezli01/skills
+/plugin install lezli01@lezli01-skills
+```
+
+The plugin bundles every skill in this repo, namespaced as `lezli01:<skill-name>`, and updates with
+`/plugin marketplace update lezli01-skills`.
+
 ## Skills
 
 <!-- One row per skill, alphabetical. -->
@@ -38,6 +54,7 @@ Keep installed skills current with `npx skills update`.
 ```
 skills/<skill-name>/SKILL.md   # one folder per skill; the folder name equals the frontmatter `name`
 skills/<skill-name>/...        # optional scripts/, references/, assets/
+.claude-plugin/                # Claude Code marketplace + plugin manifests (repo root is the plugin)
 template/SKILL.md              # copy this to start a new skill
 scripts/validate-skills.mjs    # frontmatter checks, run in CI
 ```

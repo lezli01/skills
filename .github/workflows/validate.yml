@@ -18,6 +18,8 @@ jobs:
           node-version: 22
       - name: Check SKILL.md frontmatter
         run: node scripts/validate-skills.mjs
+      - name: Check Claude Code plugin and marketplace manifests
+        run: npx -y @anthropic-ai/claude-code plugin validate .
       - name: Check skills CLI discovery
         run: |
           if find skills -mindepth 2 -name SKILL.md | grep -q .; then
