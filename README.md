@@ -10,7 +10,8 @@
 
 <p align="center">
   Reusable <a href="https://agentskills.io">Agent Skills</a> that work in Claude Code, Codex, Cursor, Gemini CLI,<br>
-  OpenCode, Copilot, and the rest of the agents supported by the <a href="https://github.com/vercel-labs/skills"><code>skills</code> CLI</a>.
+  OpenCode, Copilot, and the rest of the agents supported by the <a href="https://github.com/vercel-labs/skills"><code>skills</code> CLI</a>,<br>
+  on Windows, macOS, and Linux.
 </p>
 
 <p align="center">
@@ -77,7 +78,7 @@ Each skill links to its own README with full documentation: what it does, usage,
 
 | Skill | What it does |
 | ----- | ------------ |
-| _None yet. Watch or star the repo to hear about the first one._ | |
+| [keepup](skills/keepup/) | Audits your whole agent setup (agents, skills, MCP servers, plugins, hooks, helper CLIs, config) for updates, deprecations, and stale items, then applies the fixes you approve. |
 
 ## Why These Skills?
 
@@ -88,6 +89,8 @@ Every skill here is:
 
 - **Agent-agnostic.** Written to the open [Agent Skills](https://agentskills.io/specification) format, with no
   dependence on one vendor's features. When a feature exists in only one agent, the skill includes a fallback that works in the others.
+- **Cross-platform.** Works on Windows, macOS, and Linux. Helper scripts are Node.js, and CI tests every skill on all
+  three.
 - **One command to install.** `npx skills add` puts it in the right place for each agent you use, and
   `npx skills update` keeps it current.
 - **Documented.** Each skill has its own README, and the table above lists every one.
@@ -103,7 +106,7 @@ skills/<skill-name>/README.md  # human documentation for the skill
 skills/<skill-name>/...        # optional scripts/, references/, assets/
 .claude-plugin/                # Claude Code marketplace + plugin manifests (repo root is the plugin)
 template/                      # starter files for a new skill (see CONTRIBUTING)
-scripts/validate-skills.mjs    # frontmatter, README, and link checks, run in CI
+scripts/validate-skills.mjs    # frontmatter, README, link, and portable-script checks, run in CI
 ```
 
 ## Contributing

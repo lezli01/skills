@@ -22,6 +22,10 @@ Example prompts that trigger the skill, and what the agent does in response.
 
 Tools, CLIs, or credentials the skill needs. Write "None" if there are none.
 
+## Supported platforms
+
+Windows, macOS, and Linux. Note any platform-specific behavior here.
+
 ## Supported agents
 
 Works with any agent supported by the [`skills` CLI](https://github.com/vercel-labs/skills). Note any

@@ -3,9 +3,17 @@
 // (https://agentskills.io/specification), a per-skill README.md, and a link from the root
 // README. No dependencies.
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { extname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
+// Skills must run on Windows, macOS, and Linux: helper scripts are Node.js (or Python), never shell-specific.
+const SHELL_SCRIPT_EXT = new Set([".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".cmd"]);
+function walk(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
+  );
+}
 const SKILLS_DIR = join(ROOT, "skills");
 const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -54,6 +62,9 @@ for (const dir of dirs) {
     errors.push(`skills/${dir}/README.md: missing (each skill documents itself for humans)`);
   if (!new RegExp(`\\]\\(\\.?/?skills/${dir}/?(README\\.md)?\\)`).test(rootReadme))
     errors.push(`README.md: Skills table has no link to skills/${dir}/`);
+  for (const f of walk(join(SKILLS_DIR, dir)))
+    if (SHELL_SCRIPT_EXT.has(extname(f).toLowerCase()))
+      errors.push(`${relative(ROOT, f).replace(/\\/g, "/")}: shell-specific script; write it in Node.js so it runs on Windows, macOS, and Linux`);
 }
 
 if (errors.length) {
