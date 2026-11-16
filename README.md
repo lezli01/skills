@@ -1,8 +1,9 @@
 # skills
 
 A collection of [agent skills](https://agentskills.io) maintained by [lezli01](https://lezli01.is-a.dev).
-Each skill works with Claude Code, Codex, Cursor, OpenCode, and the other agents supported by the
-[`skills` CLI](https://github.com/vercel-labs/skills).
+Every skill is written for all mainstream agents (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Copilot,
+and the others supported by the [`skills` CLI](https://github.com/vercel-labs/skills)) and installs with
+`npx skills`.
 
 [![Validate](https://github.com/lezli01/skills/actions/workflows/validate.yml/badge.svg)](https://github.com/lezli01/skills/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -43,7 +44,9 @@ The plugin bundles every skill in this repo, namespaced as `lezli01:<skill-name>
 
 ## Skills
 
-<!-- One row per skill, alphabetical. -->
+Each skill links to its own README with full documentation.
+
+<!-- One row per skill, alphabetical: | [name](skills/name/) | one-line summary | -->
 
 | Skill | What it does |
 | ----- | ------------ |
@@ -52,11 +55,12 @@ The plugin bundles every skill in this repo, namespaced as `lezli01:<skill-name>
 ## Repository layout
 
 ```
-skills/<skill-name>/SKILL.md   # one folder per skill; the folder name equals the frontmatter `name`
+skills/<skill-name>/SKILL.md   # agent instructions; the folder name equals the frontmatter `name`
+skills/<skill-name>/README.md  # human documentation for the skill
 skills/<skill-name>/...        # optional scripts/, references/, assets/
 .claude-plugin/                # Claude Code marketplace + plugin manifests (repo root is the plugin)
-template/SKILL.md              # copy this to start a new skill
-scripts/validate-skills.mjs    # frontmatter checks, run in CI
+template/                      # copy this folder to start a new skill
+scripts/validate-skills.mjs    # frontmatter, README, and link checks, run in CI
 ```
 
 ## Contributing
