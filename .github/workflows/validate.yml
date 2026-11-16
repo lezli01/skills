@@ -1,0 +1,27 @@
+name: Validate
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check SKILL.md frontmatter
+        run: node scripts/validate-skills.mjs
+      - name: Check skills CLI discovery
+        run: |
+          if find skills -mindepth 2 -name SKILL.md | grep -q .; then
+            npx -y skills add . --list
+          else
+            echo "No skills yet; skipping discovery check."
+          fi
