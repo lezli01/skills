@@ -1,10 +1,10 @@
 ---
 name: keepup
-description: Audits an AI coding agent's whole setup (the agent itself, skills, MCP servers, plugins and extensions, hooks, helper CLIs, instruction and config files) for outdated, deprecated, superseded, or stale items, reports the findings, then applies the approved fixes. Use when the user asks whether their agent setup is up to date, wants to update or clean up skills, MCP servers, or plugins, or asks what is deprecated or obsolete in their agent configuration.
+description: Audits the setup of the agent running it (the agent itself and its skills, MCP servers, plugins and extensions, hooks, helper CLIs, instruction and config files) for outdated, deprecated, superseded, or stale items, reports the findings, then applies the approved fixes. Use when the user asks whether their agent setup is up to date, wants to update or clean up skills, MCP servers, or plugins, or asks what is deprecated or obsolete in their agent configuration.
 license: MIT
 metadata:
   author: lezli01
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # keepup
@@ -12,8 +12,9 @@ metadata:
 Bring an agent setup fully up to date in one pass: **inventory** everything, **check** each item, **report**,
 wait for the user's go-ahead, then **apply** and **verify**. Nothing changes before the user approves the report.
 
-The setup covers every agent installed on the machine, not only the one running this skill, plus the current project's
-agent files. Read-only work (steps 1–3) needs no permission; every change waits for step 4.
+**Scope: only the agent running this skill**, meaning you, with your user-level setup and the current project's files
+for you. Other agents on the machine are out of scope: leave their config alone, and mention at the end of the report
+that keepup can run inside each of them. Read-only work (steps 1–3) needs no permission; every change waits for step 4.
 
 This works on Windows, macOS, and Linux. The commands below use `npm`, `npx`, `node`, `git`, and `gh`, which behave the
 same everywhere; where a step needs an OS-specific command, use the one for the current OS. On Windows, run them in
@@ -21,19 +22,26 @@ PowerShell (`where.exe` instead of `which`, `$env:USERPROFILE` for `~`).
 
 ## 1. Inventory
 
-Run the inventory script from the project root. It is read-only and prints JSON:
+Run the inventory script from the project root, passing your own agent ID: `claude-code`, `codex`, `gemini-cli`,
+`antigravity-cli`, `cursor`, `copilot-cli`, `opencode`, or `windsurf`. It is read-only and prints JSON:
 
 ```bash
-node <this-skill-dir>/scripts/inventory.mjs
+node <this-skill-dir>/scripts/inventory.mjs --agent <your-id>
 ```
 
-It finds installed agents and their versions, MCP servers in every known config file, skills and skill lock files,
-plugins and marketplaces, hooks and status lines (with the helper CLIs they call), configured model IDs, and leftover
-backup or temp files. It never prints secret values (env, headers, and URL query strings are redacted).
+For that agent it reports its version and install path, MCP servers, the skills it loads (its own dirs, plus the shared
+`.agents/skills` dirs and other agents' dirs when it reads them), skill lock entries, plugins and marketplaces, hooks and
+the status line (with the helper CLIs they call), configured models, instruction files, and leftover backup or temp
+files. It never prints secret values (env, headers, secret-looking args, and URL query strings are redacted).
+`otherAgents` lists the other agents it found, for the closing note only.
 
-Then cross-check with the running agent's own listing commands (for example `claude mcp list`, `claude plugin list`,
-`npx skills ls -g`), which see items the script cannot, such as managed or enterprise config. When Node.js is missing, build the
-inventory by hand from [references/agents.md](references/agents.md).
+Then cross-check with your own listing commands from [references/agents.md](references/agents.md) (for example
+`claude mcp list` and `claude plugin list` in Claude Code), which see items the script cannot, such as managed or
+enterprise config. When Node.js is missing, build the inventory by hand from that file's section for you.
+
+Some items are shared with other agents: a skill in `~/.agents/skills`, a helper CLI, a runtime. Updating them is in scope
+because you depend on them. Mark a removal or a breaking change to a shared item **needs you**, and name in the report
+which other agents also use it.
 
 Done when every category in the script's output, plus anything the listing commands add, is in your working list.
 
@@ -80,7 +88,7 @@ Apply only the approved actions, in this order, so that each layer is current be
 4. Skills, then plugins and their marketplaces.
 5. Config cleanups: stale model IDs, deprecated keys, duplicate or leftover files. Move removed files into the backup
    folder instead of deleting them.
-6. The agents themselves, last, because an update may need a restart.
+6. The agent itself, last, because the update may need a restart.
 
 Use each tool's own update or remove command from [references/agents.md](references/agents.md) and
 [references/checks.md](references/checks.md) rather than editing files the tool manages. When an action fails,

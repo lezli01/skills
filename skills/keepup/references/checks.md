@@ -3,7 +3,7 @@
 How to decide each inventory item's status. Each section lists the commands to run and the signals that mean
 **Deprecated**, **Stale**, or **Update**. Agent-specific commands and paths are in [agents.md](agents.md).
 
-## Agents
+## The agent
 
 - Compare the installed version (`<agent> --version`) with the latest release in the agent's registry or release
   feed. For npm-distributed agents: `npm view <package> version`.

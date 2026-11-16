@@ -6,7 +6,7 @@ action in one numbered list, and push the OK items to the end.
 ## Template
 
 ````markdown
-## keepup report
+## keepup report: Claude Code
 
 **42 items checked** · 🔴 2 deprecated · 🟠 3 stale · 🟡 5 updates · ✅ 30 OK · ❔ 2 unknown · 👤 3 need you
 
@@ -32,6 +32,8 @@ action in one numbered list, and push the OK items to the end.
 
 - `metabase` MCP server (`http://internal-host/...`): not reachable from here; check with its owner.
 
+Out of scope: Codex and Cursor are also installed here. Run keepup inside each of them to check their setups.
+
 <details><summary>✅ 30 items OK</summary>
 
 Claude Code plugins (3), skills (8), MCP servers (4), helper CLIs (6), ...
@@ -48,6 +50,7 @@ Apply all 5 actions, pick numbers (e.g. `1,4,5`), or none?
 - **Proposed** is the concrete end state: a version, a replacement, `remove`, or the corrected value.
 - **Why** gives one piece of evidence, linked when it is a URL. Leave detailed explanations out of the table.
 - **👤** names what the user will have to do (`restart`, `sudo`, `re-auth`, `GUI`, `choose`), or stays empty.
-- Order within each group: the agents themselves first, then MCP servers, skills, plugins, helper CLIs, config.
+- Name the agent in the title. List other installed agents in one closing line, as out of scope.
+- Order within each group: the agent itself first, then MCP servers, skills, plugins, helper CLIs, config.
 - Skip empty groups. When there is nothing to do, report the summary line and the OK list, and stop.
 - Never show secret values. Refer to an env var or header by its name.

@@ -1,4 +1,4 @@
-// Runs inventory.mjs against a fake home directory and checks parsing and redaction.
+// Runs inventory.mjs against a fake home directory and checks scoping, parsing, and redaction.
 // Run from the repo root with `node --test`. Works on Windows, macOS, and Linux.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -10,7 +10,8 @@ import { fileURLToPath } from "node:url";
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "inventory.mjs");
 const SECRET = "ctx7sk-00000000-test-secret-value-0000";
-let home, project, inv, raw;
+let home, project, env;
+const runs = {};
 
 function write(path, content) {
   mkdirSync(dirname(path), { recursive: true });
@@ -48,19 +49,38 @@ before(() => {
   // Symlinks need extra privileges on Windows; cover broken links on macOS and Linux only.
   if (process.platform !== "win32") symlinkSync(join(home, "nowhere"), join(home, ".agents", "skills", "broken"));
 
-  const env = { ...process.env, HOME: home, USERPROFILE: home };
-  delete env.XDG_CONFIG_HOME;
-  delete env.XDG_STATE_HOME;
-  raw = execFileSync(process.execPath, [SCRIPT, "--project", project], { env, encoding: "utf8" });
-  inv = JSON.parse(raw);
+  env = { ...process.env, HOME: home, USERPROFILE: home };
+  for (const k of ["XDG_CONFIG_HOME", "XDG_STATE_HOME", "CLAUDECODE"]) delete env[k];
+  for (const id of ["claude-code", "codex", "opencode"]) {
+    const raw = execFileSync(process.execPath, [SCRIPT, "--agent", id, "--project", project], { env, encoding: "utf8" });
+    runs[id] = { raw, inv: JSON.parse(raw) };
+  }
 });
 
 after(() => rmSync(home, { recursive: true, force: true }));
 
-const servers = () => inv.agents.flatMap((a) => a.mcpServers);
-const server = (name) => servers().find((s) => s.name === name);
+const inv = (id = "claude-code") => runs[id].inv;
+const server = (name, id = "claude-code") => inv(id).mcpServers.find((s) => s.name === name);
+
+test("requires an agent unless running inside Claude Code", () => {
+  assert.throws(() => execFileSync(process.execPath, [SCRIPT], { env, stdio: "pipe" }), (e) => e.status === 2);
+  const viaEnv = JSON.parse(execFileSync(process.execPath, [SCRIPT, "--project", project], { env: { ...env, CLAUDECODE: "1" }, encoding: "utf8" }));
+  assert.equal(viaEnv.agent.id, "claude-code");
+});
+
+test("scopes everything to the selected agent", () => {
+  const names = (id) => inv(id).mcpServers.map((s) => s.name).sort();
+  assert.deepEqual(names("claude-code"), ["legacySse", "local", "missingBin", "proj", "pyPinned", "secretArgs", "winWrapped"]);
+  assert.deepEqual(names("codex"), ["docs"]);
+  assert.deepEqual(names("opencode"), ["fs"]);
+  assert.deepEqual(inv("codex").agent.models.map((m) => m.model), ["gpt-test"]);
+  assert.deepEqual(inv("claude-code").agent.models.map((m) => m.model), ["claude-old-model-1"]);
+  assert.equal(inv("codex").plugins, null);
+  assert.ok(inv("codex").otherAgents.includes("claude-code"));
+});
 
 test("never prints secrets", () => {
+  const raw = runs["claude-code"].raw;
   assert.equal(raw.includes(SECRET), false);
   assert.equal(raw.includes("Bearer"), false);
   assert.equal(server("secretArgs").secretInArgs, true);
@@ -71,27 +91,32 @@ test("never prints secrets", () => {
 });
 
 test("reads MCP servers from JSON, project scope, TOML, and JSONC", () => {
-  for (const name of ["secretArgs", "winWrapped", "pyPinned", "legacySse", "missingBin", "local", "proj", "docs", "fs"])
-    assert.ok(server(name), `missing server ${name}`);
   assert.equal(server("local").projectExists, true);
+  assert.deepEqual(server("docs", "codex").launch, { registry: "npm", package: "docs-mcp", pinned: null });
 });
 
 test("identifies packages behind launchers", () => {
   assert.deepEqual(server("secretArgs").launch, { registry: "npm", package: "@upstash/context7-mcp", pinned: null });
   assert.deepEqual(server("winWrapped").launch, { registry: "npm", package: "@scope/pinned-mcp", pinned: "1.2.3" });
   assert.deepEqual(server("pyPinned").launch, { registry: "pypi", package: "mcp-server-git", pinned: "0.6.0" });
-  assert.deepEqual(server("fs").launch, { registry: "npm", package: "@modelcontextprotocol/server-filesystem", pinned: null });
+  assert.deepEqual(server("fs", "opencode").launch, { registry: "npm", package: "@modelcontextprotocol/server-filesystem", pinned: null });
   assert.equal(server("legacySse").transport, "sse");
   assert.equal(server("missingBin").commandOnPath, false);
 });
 
-test("finds skills, lock files, models, hooks, and leftovers", () => {
-  assert.ok(inv.sharedSkills.some((s) => s.name === "demo" && s.hasSkillMd));
-  if (process.platform !== "win32") assert.ok(inv.sharedSkills.some((s) => s.brokenSymlink));
-  assert.equal(inv.skillLocks[0].skills[0].name, "demo");
-  assert.ok(inv.models.some((m) => m.model === "claude-old-model-1"));
-  assert.ok(inv.models.some((m) => m.model === "gpt-test"));
-  const hookHelper = inv.helperCommands.find((x) => x.bin === "definitely-not-installed-hook");
-  assert.equal(hookHelper?.onPath, false);
-  assert.ok(inv.leftoverFiles.some((f) => f.file.replace(/\\/g, "/").endsWith(".claude/settings.json.bak")));
+test("includes shared skills only for agents that read them", () => {
+  const codex = inv("codex");
+  assert.ok(codex.skills.some((s) => s.owner === "shared" && s.name === "demo" && s.hasSkillMd));
+  if (process.platform !== "win32") assert.ok(codex.skills.some((s) => s.brokenSymlink));
+  assert.equal(codex.skillLocks[0].skills[0].name, "demo");
+  // Claude Code does not read ~/.agents/skills, and has no skill symlinked into it here.
+  assert.equal(inv("claude-code").skills.some((s) => s.owner === "shared"), false);
+  assert.deepEqual(inv("claude-code").skillLocks, []);
+});
+
+test("finds hooks, helper CLIs, and leftovers of the selected agent only", () => {
+  const claude = inv("claude-code");
+  assert.equal(claude.helperCommands.find((x) => x.bin === "definitely-not-installed-hook")?.onPath, false);
+  assert.ok(claude.leftoverFiles.some((f) => f.file.replace(/\\/g, "/").endsWith(".claude/settings.json.bak")));
+  assert.equal(inv("codex").leftoverFiles.length, 0);
 });
