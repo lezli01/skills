@@ -37,3 +37,9 @@ For open-ended questions, use [Discussions](https://github.com/lezli01/skills/di
 - One skill per pull request.
 - Skills must not exfiltrate data, fetch and execute remote code, or contain credentials.
 - By contributing you agree your work is released under the [MIT License](LICENSE).
+
+## Review and merging
+
+`lezli01` is the sole maintainer. Pull requests from forks are welcome. Each one needs passing CI on Linux, macOS,
+and Windows plus a maintainer approval before it is squash-merged. CI on a fork's pull request starts only after the
+maintainer approves the run.
