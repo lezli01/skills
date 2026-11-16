@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// keepup inventory: read-only scan of AI agent setups on this machine and in the current project.
-// Prints JSON to stdout. Never prints secret values: env and header values and URL query strings are redacted.
-// Usage: node inventory.mjs [--project <dir>]   (default project: current directory)
+// keepup inventory: read-only scan of ONE agent's setup (the agent running keepup), user level and current project.
+// Prints JSON to stdout. Never prints secret values: env and header values, secret-looking args, and URL query strings
+// are redacted.
+// Usage: node inventory.mjs --agent <id> [--project <dir>]   (default project: current directory)
+// Agent ids: claude-code, codex, gemini-cli, antigravity-cli, cursor, copilot-cli, opencode, windsurf
 import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 
 const HOME = homedir();
-const argProject = process.argv.indexOf("--project");
-const PROJECT = resolve(argProject > -1 ? process.argv[argProject + 1] : process.cwd());
+const arg = (name) => { const i = process.argv.indexOf(name); return i > -1 ? process.argv[i + 1] : undefined; };
+const PROJECT = resolve(arg("--project") || process.cwd());
 const XDG_CONFIG = process.env.XDG_CONFIG_HOME || join(HOME, ".config");
 const XDG_STATE = process.env.XDG_STATE_HOME || join(HOME, ".local", "state");
 const h = (...p) => join(HOME, ...p);
@@ -26,45 +28,59 @@ const AGENTS = [
     commands: [h(".claude", "commands"), p(".claude", "commands")],
     subagents: [h(".claude", "agents"), p(".claude", "agents")],
     settings: [h(".claude", "settings.json"), p(".claude", "settings.json"), p(".claude", "settings.local.json")],
-    instructions: [h(".claude", "CLAUDE.md"), p("CLAUDE.md"), p(".claude", "CLAUDE.md"), p("CLAUDE.local.md")],
+    instructions: [h(".claude", "CLAUDE.md"), p("CLAUDE.md"), p(".claude", "CLAUDE.md"), p("CLAUDE.local.md"), p("AGENTS.md")],
+    models: [[h(".claude", "settings.json"), "model"], [p(".claude", "settings.json"), "model"], [p(".claude", "settings.local.json"), "model"]],
+    modelEnv: ["ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_SMALL_FAST_MODEL"],
+    plugins: "claude",
   },
   {
     id: "codex", bin: "codex", npm: "@openai/codex",
     dirs: [h(".codex")],
     mcp: [[h(".codex", "config.toml"), "toml", "mcp_servers"], [p(".codex", "config.toml"), "toml", "mcp_servers"]],
-    // Codex reads ~/.agents/skills and .agents/skills (shared dirs, scanned separately); ~/.codex/skills is legacy.
+    // ~/.codex/skills is legacy; current Codex reads the shared .agents/skills dirs.
     skills: [h(".codex", "skills"), p(".codex", "skills")],
+    readsShared: true,
     // Custom prompts are deprecated in favour of skills.
     commands: [h(".codex", "prompts")],
     settings: [h(".codex", "config.toml"), h(".codex", "hooks.json"), p(".codex", "hooks.json")],
     instructions: [h(".codex", "AGENTS.md"), p("AGENTS.md")],
+    models: [[h(".codex", "config.toml"), "model"]],
+    modelEnv: ["OPENAI_MODEL"],
   },
   {
     id: "gemini-cli", bin: "gemini", npm: "@google/gemini-cli",
     dirs: [h(".gemini")],
     mcp: [[h(".gemini", "settings.json"), "json", "mcpServers"], [p(".gemini", "settings.json"), "json", "mcpServers"]],
     skills: [h(".gemini", "skills"), p(".gemini", "skills")],
+    readsShared: true,
     extensions: [h(".gemini", "extensions"), p(".gemini", "extensions")],
     commands: [h(".gemini", "commands"), p(".gemini", "commands")],
     settings: [h(".gemini", "settings.json"), p(".gemini", "settings.json")],
     instructions: [h(".gemini", "GEMINI.md"), p("GEMINI.md")],
+    models: [[h(".gemini", "settings.json"), "model.name"], [p(".gemini", "settings.json"), "model.name"]],
+    modelEnv: ["GEMINI_MODEL"],
   },
   {
     id: "cursor", bin: "cursor-agent", altBins: ["agent", "cursor"],
     dirs: [h(".cursor")],
     mcp: [[h(".cursor", "mcp.json"), "json", "mcpServers"], [p(".cursor", "mcp.json"), "json", "mcpServers"]],
     skills: [h(".cursor", "skills"), p(".cursor", "skills")],
+    readsShared: true,
+    // Cursor also loads skills from other agents' dirs.
+    compatSkills: [h(".claude", "skills"), p(".claude", "skills"), h(".codex", "skills"), p(".codex", "skills")],
     commands: [h(".cursor", "commands"), p(".cursor", "commands")],
     settings: [h(".cursor", "cli-config.json"), h(".cursor", "hooks.json"), p(".cursor", "hooks.json")],
-    instructions: [p(".cursorrules"), p(".cursor", "rules")],
+    instructions: [p(".cursorrules"), p(".cursor", "rules"), p("AGENTS.md")],
   },
   {
     id: "copilot-cli", bin: "copilot", npm: "@github/copilot",
     dirs: [h(".copilot")],
     mcp: [[h(".copilot", "mcp-config.json"), "json", "mcpServers"], [p(".github", "mcp.json"), "json", "mcpServers"]],
     skills: [h(".copilot", "skills"), p(".github", "skills")],
+    readsShared: true,
+    compatSkills: [p(".claude", "skills")],
     settings: [h(".copilot", "config.json"), h(".copilot", "settings.json"), p(".github", "copilot", "settings.json"), p(".github", "copilot", "settings.local.json")],
-    instructions: [h(".copilot", "copilot-instructions.md"), p(".github", "copilot-instructions.md")],
+    instructions: [h(".copilot", "copilot-instructions.md"), p(".github", "copilot-instructions.md"), p("AGENTS.md")],
   },
   {
     id: "opencode", bin: "opencode", npm: "opencode-ai",
@@ -75,10 +91,15 @@ const AGENTS = [
       [p(".opencode", "opencode.json"), "json", "mcp"], [p(".opencode", "opencode.jsonc"), "json", "mcp"],
     ],
     skills: [join(XDG_CONFIG, "opencode", "skills"), p(".opencode", "skills")],
+    readsShared: true,
+    compatSkills: [h(".claude", "skills"), p(".claude", "skills")],
     commands: [join(XDG_CONFIG, "opencode", "commands"), p(".opencode", "commands")],
     subagents: [join(XDG_CONFIG, "opencode", "agents"), p(".opencode", "agents")],
     settings: [join(XDG_CONFIG, "opencode", "opencode.json"), join(XDG_CONFIG, "opencode", "opencode.jsonc"), p("opencode.json"), p("opencode.jsonc")],
-    instructions: [join(XDG_CONFIG, "opencode", "AGENTS.md")],
+    instructions: [join(XDG_CONFIG, "opencode", "AGENTS.md"), p("AGENTS.md")],
+    models: [[join(XDG_CONFIG, "opencode", "opencode.json"), "model"], [join(XDG_CONFIG, "opencode", "opencode.json"), "small_model"],
+      [join(XDG_CONFIG, "opencode", "opencode.jsonc"), "model"], [join(XDG_CONFIG, "opencode", "opencode.jsonc"), "small_model"],
+      [p("opencode.json"), "model"], [p("opencode.jsonc"), "model"]],
   },
   {
     // Antigravity CLI replaced Gemini CLI for unpaid-tier users (2026-06).
@@ -92,7 +113,7 @@ const AGENTS = [
     skills: [h(".codeium", "windsurf", "skills"), p(".windsurf", "skills")],
   },
 ];
-// Shared skill directories used by the `skills` CLI and several agents.
+// Shared skill directories used by the `skills` CLI and several agents (`readsShared`).
 const SHARED_SKILL_DIRS = [h(".agents", "skills"), p(".agents", "skills")];
 const SKILL_LOCKS = [join(XDG_STATE, "skills", ".skill-lock.json"), h(".agents", ".skill-lock.json"), p("skills-lock.json")];
 const LEFTOVER_RE = /(\.bak[^/]*|\.old|\.orig|\.save|~|\.tmp|\.swp)$|\.json\.\d+\.[0-9a-f-]+\.tmp$/i;
@@ -341,19 +362,18 @@ function executableOf(command) {
   return { bin: expanded };
 }
 
-function modelSettings() {
+function modelSettings(agent) {
   const out = [];
-  const add = (source, model) => model && out.push({ source: tilde(source), model: String(model) });
-  for (const f of [h(".claude", "settings.json"), p(".claude", "settings.json"), p(".claude", "settings.local.json")]) add(f, readJson(f)?.model);
-  for (const f of [h(".codex", "config.toml")]) {
-    try { const m = readFileSync(f, "utf8").match(/^model\s*=\s*["']([^"']+)["']/m); if (m) add(f, m[1]); } catch {}
+  const add = (source, model) => model && typeof model !== "object" && out.push({ source: tilde(source), model: String(model) });
+  for (const [f, key] of agent.models || []) {
+    if (!exists(f)) continue;
+    if (f.endsWith(".toml")) {
+      try { const m = readFileSync(f, "utf8").match(new RegExp(`^${key}\\s*=\\s*["']([^"']+)["']`, "m")); if (m) add(f, m[1]); } catch {}
+    } else {
+      add(f, key.split(".").reduce((o, k) => (o == null ? o : o[k]), readJson(f)));
+    }
   }
-  for (const f of [h(".gemini", "settings.json")]) { const s = readJson(f); add(f, s?.model?.name || (typeof s?.model === "string" ? s.model : null)); }
-  for (const f of [join(XDG_CONFIG, "opencode", "opencode.json"), join(XDG_CONFIG, "opencode", "opencode.jsonc")]) {
-    const s = readJson(f); add(f, s?.model); add(f, s?.small_model);
-  }
-  for (const k of ["ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_SMALL_FAST_MODEL", "OPENAI_MODEL", "GEMINI_MODEL"])
-    if (process.env[k]) out.push({ source: `env ${k}`, model: process.env[k] });
+  for (const k of agent.modelEnv || []) if (process.env[k]) out.push({ source: `env ${k}`, model: process.env[k] });
   return out;
 }
 
@@ -381,19 +401,62 @@ function leftovers(dirs) {
 }
 
 // ---------------------------------------------------------------- scan
+// Scope: the agent running keepup. Claude Code marks its child processes with CLAUDECODE=1; other agents pass --agent.
+const agentId = arg("--agent") || (process.env.CLAUDECODE ? "claude-code" : null);
+const agent = AGENTS.find((a) => a.id === agentId);
+if (!agent) {
+  process.stderr.write(`keepup inventory: ${agentId ? `unknown agent "${agentId}"` : "missing --agent"}. ` +
+    `Pass the agent running keepup: --agent ${AGENTS.map((a) => a.id).join("|")}\n`);
+  process.exit(2);
+}
+
+let bin = agent.bin;
+let paths = which(bin);
+for (const alt of agent.altBins || []) { if (paths.length) break; paths = which(alt); bin = alt; }
+const version = paths.length ? run(bin, ["--version"], 10000) : null;
+
+// Skills this agent loads: its own dirs, the shared .agents/skills dirs when it reads them, and other agents' dirs it
+// also loads. A skill reached through several dirs is listed under each; that is itself a finding (duplicate load).
+const ownSkills = collectSkills(agent.skills || [], "own");
+const sharedSkills = agent.readsShared ? collectSkills(SHARED_SKILL_DIRS, "shared") : [];
+const compatSkills = collectSkills(agent.compatSkills || [], "compat");
+const skills = [...ownSkills, ...sharedSkills, ...compatSkills];
+const visibleNames = new Set(skills.map((x) => x.name || basename(x.dir)));
+// Skills symlinked into the shared dir are managed through it even when the agent does not read it directly.
+const linksShared = ownSkills.some((x) => x.symlinkTo && /[\\/]\.agents[\\/]skills[\\/]/.test(x.symlinkTo));
+
+const hooks = (agent.settings || []).filter((f) => f.endsWith(".json")).flatMap(hookCommands);
+const mcpServers = collectMcp(agent);
+
 const result = {
   generatedAt: new Date().toISOString(),
   platform: `${process.platform} ${process.arch}`,
   project: tilde(PROJECT),
-  runtimes: {},
-  agents: [],
-  sharedSkills: collectSkills(SHARED_SKILL_DIRS, "shared"),
+  agent: {
+    id: agent.id,
+    detectedFrom: arg("--agent") ? "--agent" : "env CLAUDECODE",
+    binaries: paths.map(tilde),
+    duplicateInstalls: paths.length > 1 || undefined,
+    version: version ? version.split("\n")[0] : null,
+    npmPackage: agent.npm,
+    configDirs: (agent.dirs || []).filter(isDir).map(tilde),
+    settingsFiles: (agent.settings || []).filter(exists).map((f) => ({ file: tilde(f), parses: f.endsWith(".toml") || readJson(f) !== undefined })),
+    instructionFiles: [...new Set((agent.instructions || []).filter(exists).map(tilde))],
+    models: modelSettings(agent),
+  },
+  mcpServers,
+  skills,
   skillLocks: [],
-  claudePlugins: null,
+  plugins: null,
+  extensions: listDir(agent.extensions),
+  commands: listDir(agent.commands),
+  subagents: listDir(agent.subagents),
   hooks: [],
   helperCommands: [],
-  models: modelSettings(),
+  runtimes: {},
   leftoverFiles: [],
+  // Other agents found on the machine are out of scope; keepup runs inside each one separately.
+  otherAgents: AGENTS.filter((a) => a !== agent && (which(a.bin).length || (a.dirs || []).some(isDir))).map((a) => a.id),
 };
 
 for (const [name, args] of [["node", ["--version"]], ["npm", ["--version"]], ["uv", ["--version"]], ["pipx", ["--version"]], ["docker", ["--version"]], ["brew", ["--version"]], ["gh", ["--version"]], ["git", ["--version"]]]) {
@@ -401,50 +464,25 @@ for (const [name, args] of [["node", ["--version"]], ["npm", ["--version"]], ["u
   result.runtimes[name] = v ? v.split("\n")[0] : null;
 }
 
-for (const agent of AGENTS) {
-  let bin = agent.bin;
-  let paths = which(bin);
-  for (const alt of agent.altBins || []) { if (paths.length) break; paths = which(alt); bin = alt; }
-  const present = paths.length > 0 || (agent.dirs || []).some(isDir);
-  if (!present) continue;
-  const version = paths.length ? run(bin, ["--version"], 10000) : null;
-  result.agents.push({
-    id: agent.id,
-    binaries: paths.map(tilde),
-    duplicateInstalls: paths.length > 1 || undefined,
-    version: version ? version.split("\n")[0] : null,
-    npmPackage: agent.npm,
-    configDirs: (agent.dirs || []).filter(isDir).map(tilde),
-    mcpServers: collectMcp(agent),
-    skills: collectSkills(agent.skills || [], agent.id),
-    extensions: listDir(agent.extensions),
-    commands: listDir(agent.commands),
-    subagents: listDir(agent.subagents),
-    instructionFiles: (agent.instructions || []).filter(exists).map(tilde),
-    settingsFiles: (agent.settings || []).filter(exists).map((f) => ({ file: tilde(f), parses: f.endsWith(".toml") || readJson(f) !== undefined })),
-  });
-  for (const f of agent.settings || []) if (f.endsWith(".json")) result.hooks.push(...hookCommands(f));
-}
-result.leftoverFiles = leftovers([
-  ...AGENTS.flatMap((a) => (a.dirs || []).flatMap((d) => [d, join(d, "skills"), join(d, "plugins")])),
-  h(".agents"), PROJECT, p(".claude"), p(".cursor"), p(".gemini"), p(".codex"),
-]);
-
-for (const f of SKILL_LOCKS) {
-  const lock = readJson(f);
-  if (!lock) continue;
-  result.skillLocks.push({
-    file: tilde(f), version: lock.version,
-    skills: Object.entries(lock.skills || {}).map(([n, s]) => ({ name: n, source: s.source, sourceType: s.sourceType, updatedAt: s.updatedAt })),
-  });
+// Lock entries only for skills this agent can see.
+if (agent.readsShared || linksShared) {
+  for (const f of SKILL_LOCKS) {
+    const lock = readJson(f);
+    if (!lock) continue;
+    const entries = Object.entries(lock.skills || {}).filter(([n]) => visibleNames.has(n));
+    if (entries.length) result.skillLocks.push({
+      file: tilde(f), version: lock.version,
+      skills: entries.map(([n, s]) => ({ name: n, source: s.source, sourceType: s.sourceType, updatedAt: s.updatedAt })),
+    });
+  }
 }
 
 const cpDir = h(".claude", "plugins");
-if (isDir(cpDir)) {
+if (agent.plugins === "claude" && isDir(cpDir)) {
   const installed = readJson(join(cpDir, "installed_plugins.json"));
   const markets = readJson(join(cpDir, "known_marketplaces.json"));
   const enabled = readJson(h(".claude", "settings.json"))?.enabledPlugins || {};
-  result.claudePlugins = {
+  result.plugins = {
     installed: Object.entries(installed?.plugins || {}).map(([id, entries]) => ({
       id,
       enabled: enabled[id],
@@ -455,12 +493,11 @@ if (isDir(cpDir)) {
   };
 }
 
-// Helper executables called by hooks, status lines, and stdio MCP servers.
+// Helper executables called by this agent's hooks, status line, and stdio MCP servers.
 const helpers = new Map();
 const addHelper = (bin, usedBy) => {
   if (!bin) return;
-  const key = bin;
-  const entry = helpers.get(key) || { bin: tilde(bin), path: null, onPath: false, usedBy: [] };
+  const entry = helpers.get(bin) || { bin: tilde(bin), path: null, onPath: false, usedBy: [] };
   if (/^\.\.?[\\/]/.test(bin)) {
     // Resolved against the agent's working directory; cannot be checked from here.
     entry.onPath = "relative-path";
@@ -470,17 +507,26 @@ const addHelper = (bin, usedBy) => {
     entry.onPath = Boolean(resolved);
   }
   if (!entry.usedBy.includes(usedBy)) entry.usedBy.push(usedBy);
-  helpers.set(key, entry);
+  helpers.set(bin, entry);
 };
-for (const hk of result.hooks) {
+for (const hk of hooks) {
   const ex = executableOf(hk.command);
   if (!ex) continue;
   addHelper(ex.bin, `${hk.event} hook (${hk.source})`);
   if (ex.script && /[\\/]/.test(ex.script)) result.helperCommands.push({ script: ex.script, exists: exists(ex.script.replace(/^~/, HOME)), usedBy: `${hk.event} hook (${hk.source})` });
 }
-for (const a of result.agents) for (const s of a.mcpServers) if (s.command) addHelper(String(s.command), `MCP ${s.name} (${s.source})`);
+for (const s of mcpServers) if (s.command) addHelper(String(s.command), `MCP ${s.name} (${s.source})`);
 result.helperCommands.unshift(...helpers.values());
-// Hook commands themselves can carry secrets inline; keep only the event and source.
-result.hooks = result.hooks.map(({ event, command, source }) => ({ event, source, executable: executableOf(command)?.bin ? tilde(executableOf(command).bin) : null }));
+// Hook commands can carry secrets inline; keep only the event, source, and executable.
+result.hooks = hooks.map(({ event, command, source }) => ({ event, source, executable: executableOf(command)?.bin ? tilde(executableOf(command).bin) : null }));
+
+// Leftover files in this agent's own config dirs (and its project dirs).
+const projectDirs = [...(agent.settings || []), ...(agent.mcp || []).map((m) => m[0])]
+  .filter((f) => f.startsWith(PROJECT)).map(dirname);
+result.leftoverFiles = leftovers([
+  ...(agent.dirs || []).flatMap((d) => [d, join(d, "skills"), join(d, "plugins")]),
+  ...(agent.readsShared || linksShared ? [h(".agents")] : []),
+  ...projectDirs.filter((d) => d !== PROJECT),
+]);
 
 process.stdout.write(JSON.stringify(result, (k, v) => (v === undefined ? undefined : v), 2) + "\n");

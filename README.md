@@ -78,7 +78,7 @@ Each skill links to its own README with full documentation: what it does, usage,
 
 | Skill | What it does |
 | ----- | ------------ |
-| [keepup](skills/keepup/) | Audits your whole agent setup (agents, skills, MCP servers, plugins, hooks, helper CLIs, config) for updates, deprecations, and stale items, then applies the fixes you approve. |
+| [keepup](skills/keepup/) | Audits the setup of the agent it runs in (the agent, its skills, MCP servers, plugins, hooks, helper CLIs, config) for updates, deprecations, and stale items, then applies the fixes you approve. |
 
 ## Why These Skills?
 

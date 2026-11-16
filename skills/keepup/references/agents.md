@@ -1,6 +1,7 @@
 # Agents
 
-Where each agent keeps its configuration and how to update it, as of 2026-11. `~` is the home directory
+keepup audits only the agent running it: use your own section below, plus the shared-skills paragraph if you read
+those dirs. Where each agent keeps its configuration and how to update it, as of 2026-11. `~` is the home directory
 (`%USERPROFILE%` on Windows); `<project>` is the current repository. The paths are the same on Windows, macOS, and Linux
 unless noted. When a path or command here disagrees with the agent's current `--help` or docs, trust the agent: it
 changes faster than this file. Note what changed in the report.
