@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Validates every skills/<name>/SKILL.md against the Agent Skills spec
-// (https://agentskills.io/specification). No dependencies.
+// Validates every skills/<name>/ folder: SKILL.md frontmatter against the Agent Skills spec
+// (https://agentskills.io/specification), a per-skill README.md, and a link from the root
+// README. No dependencies.
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -19,6 +20,7 @@ function parseFrontmatter(text) {
   return fields;
 }
 
+const rootReadme = readFileSync(join(ROOT, "README.md"), "utf8");
 const errors = [];
 const dirs = existsSync(SKILLS_DIR)
   ? readdirSync(SKILLS_DIR).filter(
@@ -47,6 +49,11 @@ for (const dir of dirs) {
   }
   if (!description) errors.push(`${where}: missing \`description\``);
   else if (description.length > 1024) errors.push(`${where}: \`description\` exceeds 1024 characters`);
+
+  if (!existsSync(join(SKILLS_DIR, dir, "README.md")))
+    errors.push(`skills/${dir}/README.md: missing (each skill documents itself for humans)`);
+  if (!new RegExp(`\\]\\(\\.?/?skills/${dir}/?(README\\.md)?\\)`).test(rootReadme))
+    errors.push(`README.md: Skills table has no link to skills/${dir}/`);
 }
 
 if (errors.length) {
