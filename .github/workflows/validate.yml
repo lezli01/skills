@@ -10,16 +10,24 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    # Every skill must work on Windows, macOS, and Linux.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Check SKILL.md frontmatter
+      - name: Check skills (frontmatter, docs, README links, portable scripts)
         run: node scripts/validate-skills.mjs
-      - name: Check Claude Code plugin and marketplace manifests
-        run: npx -y @anthropic-ai/claude-code plugin validate .
+      - name: Run skill script tests
+        run: node --test
       - name: Check skills CLI discovery
         run: |
           if find skills -mindepth 2 -name SKILL.md | grep -q .; then
@@ -27,3 +35,6 @@ jobs:
           else
             echo "No skills yet; skipping discovery check."
           fi
+      - name: Check Claude Code plugin and marketplace manifests
+        if: runner.os == 'Linux'
+        run: npx -y @anthropic-ai/claude-code plugin validate .

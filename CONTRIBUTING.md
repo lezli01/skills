@@ -15,14 +15,17 @@ For open-ended questions, use [Discussions](https://github.com/lezli01/skills/di
    triggers. It is the only part an agent sees before deciding, and it must stay under 1024 characters.
 3. Keep `SKILL.md` focused. Put long reference material in `references/` and runnable helpers in `scripts/`,
    and link to them from `SKILL.md`. Write it so it works in every agent the `skills` CLI supports, not just one.
+   It must also work on **Windows, macOS, and Linux**: write helper scripts in Node.js (no `.sh`/`.ps1`), build
+   paths with `node:path`, and give Windows equivalents for any OS-specific command. Add a `*.test.mjs` for each script.
 4. Fill in `skills/<skill-name>/README.md` with the skill's full documentation: what it does, how to install it,
-   usage examples, requirements, and supported agents.
+   usage examples, requirements, supported agents, and supported platforms.
 5. Add a row to the **Skills** table in the root `README.md` that links to `skills/<skill-name>/`, and update any
    other root README section your change affects.
 6. Validate and try the skill locally:
 
    ```bash
    node scripts/validate-skills.mjs
+   node --test                              # script tests; CI runs them on Windows, macOS, and Linux
    npx skills add . --list                  # confirm the CLI discovers it
    npx skills add . --skill <skill-name> -a claude-code -y
    ```
