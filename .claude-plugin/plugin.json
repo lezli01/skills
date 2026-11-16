@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "lezli01",
+  "description": "All skills from github.com/lezli01/skills",
+  "author": {
+    "name": "lezli01",
+    "url": "https://lezli01.is-a.dev"
+  },
+  "homepage": "https://lezli01.is-a.dev",
+  "repository": "https://github.com/lezli01/skills",
+  "license": "MIT",
+  "keywords": ["agent-skills", "skills"]
+}

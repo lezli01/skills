@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "lezli01-skills",
+  "description": "Agent skills maintained by lezli01",
+  "owner": {
+    "name": "lezli01",
+    "url": "https://lezli01.is-a.dev"
+  },
+  "plugins": [
+    {
+      "name": "lezli01",
+      "description": "All skills from github.com/lezli01/skills",
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://lezli01.is-a.dev",
+      "repository": "https://github.com/lezli01/skills",
+      "license": "MIT"
+    }
+  ]
+}

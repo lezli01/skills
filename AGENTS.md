@@ -5,5 +5,6 @@ This repo publishes agent skills installed with `npx skills add lezli01/skills`.
 
 - Start a new skill by copying `template/` to `skills/<name>/`; the folder name equals the frontmatter `name`.
 - After any change under `skills/`, run `node scripts/validate-skills.mjs` and `npx skills add . --list`; both must pass.
+- The repo root is also a Claude Code plugin (`.claude-plugin/`), which loads `skills/` automatically; list skills there only by adding them to `skills/`. `plugin.json` omits `version` on purpose so installs track the latest commit.
 - Every skill has a row in the README **Skills** table; keep it alphabetical and in sync.
 - Before writing or editing a `SKILL.md`, read the spec at https://agentskills.io/specification.
