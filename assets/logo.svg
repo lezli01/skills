@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    skills icon: a white lightning bolt (a skill, loaded on demand) on a flat
+    rounded violet tile, with a small four-point spark. Same tile shape and flat
+    single-accent style as the other lezli01 project icons. Glyphs are paths so
+    any rasterizer renders them without fonts.
+  -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="#8b5cf6"/>
+  <g fill="#ffffff">
+    <!-- Lightning bolt -->
+    <path d="M566,176 L294,568 H476 L426,848 L730,436 H544 Z"/>
+    <!-- Four-point spark, upper right -->
+    <path d="M760,196 Q768,268 840,276 Q768,284 760,356 Q752,284 680,276 Q752,268 760,196 Z"/>
+  </g>
+</svg>

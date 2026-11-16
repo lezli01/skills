@@ -9,7 +9,7 @@ For open-ended questions, use [Discussions](https://github.com/lezli01/skills/di
 
 ## Add or change a skill
 
-1. Copy `template/` to `skills/<skill-name>/`. The folder name must equal the `name` in the frontmatter:
+1. Copy `template/` to `skills/<skill-name>/` and rename `SKILL.md.template` to `SKILL.md`. (The suffix keeps the template from being installed as a skill.) The folder name must equal the `name` in the frontmatter:
    lowercase letters, digits, and hyphens, at most 64 characters.
 2. Write the `description` so an agent knows **when** to load the skill: what it does plus the concrete
    triggers. It is the only part an agent sees before deciding, and it must stay under 1024 characters.
