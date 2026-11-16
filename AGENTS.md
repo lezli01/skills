@@ -9,7 +9,7 @@ Every skill must install with `npx skills add lezli01/skills --skill <name>`. Th
 
 - Write skills agent-agnostic: plain Markdown instructions and portable scripts. When a feature exists in only one
   agent, provide a fallback that works in the others.
-- Start a new skill by copying `template/` to `skills/<name>/`; the folder name equals the frontmatter `name`.
+- Start a new skill by copying `template/` to `skills/<name>/` and renaming `SKILL.md.template` to `SKILL.md`; the folder name equals the frontmatter `name`. The template keeps the `.template` suffix so the `skills` CLI never installs it.
 - Before writing or editing a `SKILL.md`, read the spec at https://agentskills.io/specification.
 
 ## Documentation
